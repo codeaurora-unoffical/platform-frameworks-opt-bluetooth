@@ -20,8 +20,8 @@ import android.bluetooth.client.map.utils.ObexAppParameters;
 
 import java.io.IOException;
 
-import javax.obex.ClientSession;
-import javax.obex.HeaderSet;
+import javax.btobex.ClientSession;
+import javax.btobex.HeaderSet;
 
 final class BluetoothMasRequestSetNotificationRegistration extends BluetoothMasRequest {
 

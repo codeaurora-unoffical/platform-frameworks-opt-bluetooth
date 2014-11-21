@@ -25,8 +25,8 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Date;
 
-import javax.obex.ClientSession;
-import javax.obex.HeaderSet;
+import javax.btobex.ClientSession;
+import javax.btobex.HeaderSet;
 
 final class BluetoothMasRequestGetMessagesListing extends BluetoothMasRequest {
 

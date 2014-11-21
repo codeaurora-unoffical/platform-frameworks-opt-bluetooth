@@ -26,9 +26,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
-import javax.obex.ClientSession;
-import javax.obex.HeaderSet;
-import javax.obex.ResponseCodes;
+import javax.btobex.ClientSession;
+import javax.btobex.HeaderSet;
+import javax.btobex.ResponseCodes;
 
 final class BluetoothMasRequestGetMessage extends BluetoothMasRequest {
 
