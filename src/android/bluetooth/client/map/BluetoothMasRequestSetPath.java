@@ -18,9 +18,9 @@ package android.bluetooth.client.map;
 
 import java.io.IOException;
 
-import javax.obex.ClientSession;
-import javax.obex.HeaderSet;
-import javax.obex.ResponseCodes;
+import javax.btobex.ClientSession;
+import javax.btobex.HeaderSet;
+import javax.btobex.ResponseCodes;
 
 class BluetoothMasRequestSetPath extends BluetoothMasRequest {
 

@@ -24,10 +24,12 @@ import android.bluetooth.client.map.utils.ObexAppParameters;
 import java.io.IOException;
 import java.util.Arrays;
 
-import javax.obex.HeaderSet;
-import javax.obex.Operation;
-import javax.obex.ResponseCodes;
-import javax.obex.ServerRequestHandler;
+import javax.btobex.HeaderSet;
+import javax.btobex.Operation;
+import javax.btobex.ResponseCodes;
+import javax.btobex.ServerRequestHandler;
+import javax.btobex.ServerOperation;
+import javax.btobex.ObexHelper;
 
 class BluetoothMnsObexServer extends ServerRequestHandler {
 
@@ -97,6 +99,21 @@ class BluetoothMnsObexServer extends ServerRequestHandler {
             }
 
             Byte inst = oap.getByte(BluetoothMasRequest.OAP_TAGID_MAS_INSTANCE_ID);
+
+            if (((ServerOperation)op).mSrmServerSession.getLocalSrmCapability() ==
+                    ObexHelper.SRM_CAPABLE) {
+                Log.v(TAG, "Local Device SRM: Capable");
+                Byte srm = (Byte)headerset.getHeader(HeaderSet.SINGLE_RESPONSE_MODE);
+                if (srm == ObexHelper.OBEX_SRM_ENABLED) {
+                    Log.v(TAG, "SRM status: Enabled");
+                    ((ServerOperation)op).mSrmServerSession
+                            .setLocalSrmStatus(ObexHelper.LOCAL_SRM_ENABLED);
+                } else {
+                    Log.v(TAG, "SRM status: Disabled");
+                    ((ServerOperation)op).mSrmServerSession
+                            .setLocalSrmStatus(ObexHelper.LOCAL_SRM_DISABLED);
+                }
+             }
 
             BluetoothMapEventReport ev = BluetoothMapEventReport.fromStream(op
                     .openDataInputStream());

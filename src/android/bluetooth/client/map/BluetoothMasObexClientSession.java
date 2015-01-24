@@ -22,10 +22,11 @@ import android.util.Log;
 
 import java.io.IOException;
 
-import javax.obex.ClientSession;
-import javax.obex.HeaderSet;
-import javax.obex.ObexTransport;
-import javax.obex.ResponseCodes;
+import javax.btobex.ClientSession;
+import javax.btobex.HeaderSet;
+import javax.btobex.ObexTransport;
+import javax.btobex.ObexHelper;
+import javax.btobex.ResponseCodes;
 
 class BluetoothMasObexClientSession {
     private static final String TAG = "BluetoothMasObexClientSession";
@@ -109,8 +110,11 @@ class BluetoothMasObexClientSession {
 
         private void connect() {
             try {
-                mSession = new ClientSession(mTransport);
+                int mps = ObexHelper.MAX_CLIENT_PACKET_SIZE;
 
+                Log.w(TAG, "connect: MPS: " + mps);
+                mSession = new ClientSession(mTransport);
+                mSession.setMaxPacketSize(mps);
                 HeaderSet headerset = new HeaderSet();
                 headerset.setHeader(HeaderSet.TARGET, MAS_TARGET);
 
@@ -118,14 +122,19 @@ class BluetoothMasObexClientSession {
 
                 if (headerset.getResponseCode() == ResponseCodes.OBEX_HTTP_OK) {
                     mConnected = true;
+                    // Turn on/off SRM based on transport capability based on OBEX-over-L2CAP capable
+                    mSession.mSrmClient.setLocalSrmCapability(
+                            ((BluetoothMapTransport)mTransport).isSrmCapable());
                 } else {
                     disconnect();
                 }
             } catch (IOException e) {
+                Log.w(TAG, "handled connect exception: ", e);
             }
         }
 
         private void disconnect() {
+            Log.w(TAG, "disconnect: ");
             try {
                 mSession.disconnect(null);
             } catch (IOException e) {
@@ -134,6 +143,7 @@ class BluetoothMasObexClientSession {
             try {
                 mSession.close();
             } catch (IOException e) {
+                Log.w(TAG, "handled disconnect exception:", e);
             }
 
             mConnected = false;
@@ -187,6 +197,28 @@ class BluetoothMasObexClientSession {
             return false;
         }
 
+        if (mClientThread.mSession.mSrmClient.getLocalSrmCapability() == ObexHelper.SRM_CAPABLE) {
+            Log.d(TAG, "Client is srm capable");
+            if (request instanceof BluetoothMasRequestGetFolderListing ||
+                request instanceof BluetoothMasRequestGetFolderListingSize ||
+                request instanceof BluetoothMasRequestGetMessagesListing ||
+                request instanceof BluetoothMasRequestGetMessage ||
+                request instanceof BluetoothMasRequestPushMessage ||
+                request instanceof BluetoothMasRequestGetMessagesListingSize) {
+                    mClientThread.mSession.mSrmClient.setLocalSrmStatus(
+                            ObexHelper.LOCAL_SRM_ENABLED);
+                    request.mHeaderSet.setHeader(HeaderSet.SINGLE_RESPONSE_MODE,
+                            ObexHelper.OBEX_SRM_ENABLED);
+                    mClientThread.mSession.mSrmClient.setLocalSrmpWait(false);
+            }
+        } else {
+                Log.d(TAG, "Client is not srm capable");
+        }
+
         return mClientThread.schedule(request);
+    }
+
+    public int readTransportType() {
+        return ((BluetoothMapTransport)mTransport).mType;
     }
 }

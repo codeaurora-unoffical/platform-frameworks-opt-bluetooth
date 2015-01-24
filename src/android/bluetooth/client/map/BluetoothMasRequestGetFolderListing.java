@@ -21,8 +21,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 
-import javax.obex.ClientSession;
-import javax.obex.HeaderSet;
+import javax.btobex.ClientSession;
+import javax.btobex.HeaderSet;
 
 final class BluetoothMasRequestGetFolderListing extends BluetoothMasRequest {
 

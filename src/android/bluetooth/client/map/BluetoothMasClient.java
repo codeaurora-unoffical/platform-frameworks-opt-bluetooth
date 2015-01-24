@@ -19,6 +19,8 @@ package android.bluetooth.client.map;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothMasInstance;
 import android.bluetooth.BluetoothSocket;
+import android.bluetooth.BluetoothUuid;
+
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
@@ -34,7 +36,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
 
-import javax.obex.ObexTransport;
+import javax.btobex.ObexTransport;
 
 public class BluetoothMasClient {
 
@@ -465,20 +467,48 @@ public class BluetoothMasClient {
 
         @Override
         public void run() {
+            int btMasTransportType;
+            if (connectL2capSocket())
+                btMasTransportType = BluetoothMapTransport.TYPE_L2CAP;
+            else if (connectRfcommSocket())
+                btMasTransportType = BluetoothMapTransport.TYPE_RFCOMM;
+            else
+            {
+                Log.e(TAG, "Error when creating/connecting L2CAP/RFCOMM socket");
+                return;
+            }
+            BluetoothMapTransport transport;
+            transport = new BluetoothMapTransport(socket, btMasTransportType);
+
+            mSessionHandler.obtainMessage(SOCKET_CONNECTED, transport).sendToTarget();
+        }
+
+        private boolean connectL2capSocket() {
             try {
+                /* Use BluetoothSocket to connect */
+                Log.v(TAG,"connectL2capSocket: PSM: " + mMas.getL2capPsm());
+                socket = mDevice.createSecureL2capSocket(mMas.getL2capPsm());
+                socket.connect();
+            } catch (IOException e) {
+                Log.e(TAG, "Error when creating/connecting L2cap socket", e);
+                return false;
+            }
+            return true;
+        }
+
+        private boolean connectRfcommSocket() {
+            try {
+                /* Use BluetoothSocket to connect */
+                Log.v(TAG,"connectRfcommSocket: channel: " + mMas.getChannel());
                 socket = mDevice.createRfcommSocket(mMas.getChannel());
                 socket.connect();
-
-                BluetoothMapRfcommTransport transport;
-                transport = new BluetoothMapRfcommTransport(socket);
-
-                mSessionHandler.obtainMessage(SOCKET_CONNECTED, transport).sendToTarget();
             } catch (IOException e) {
                 Log.e(TAG, "Error when creating/connecting socket", e);
-
                 closeSocket();
                 mSessionHandler.obtainMessage(SOCKET_ERROR).sendToTarget();
+                return false;
             }
+            return true;
         }
 
         @Override
@@ -657,21 +687,21 @@ public class BluetoothMasClient {
         return mConnectionState;
     }
 
-    private boolean enableNotifications() {
-        Log.v(TAG, "enableNotifications()");
+    private boolean enableNotifications(int transportType) {
+        Log.v(TAG, "enableNotifications(): " + transportType);
 
         if (mMnsService == null) {
             mMnsService = new BluetoothMnsService();
         }
 
-        mMnsService.registerCallback(mMas.getId(), mSessionHandler);
+        mMnsService.registerCallback(mMas.getId(), mSessionHandler, transportType);
 
         BluetoothMasRequest request = new BluetoothMasRequestSetNotificationRegistration(true);
         return mObexSession.makeRequest(request);
     }
 
     private boolean disableNotifications() {
-        Log.v(TAG, "enableNotifications()");
+        Log.v(TAG, "disableNotifications()");
 
         if (mMnsService != null) {
             mMnsService.unregisterCallback(mMas.getId());
@@ -703,7 +733,7 @@ public class BluetoothMasClient {
         }
 
         if (status) {
-            return enableNotifications();
+            return enableNotifications(mObexSession.readTransportType());
         } else {
             return disableNotifications();
         }

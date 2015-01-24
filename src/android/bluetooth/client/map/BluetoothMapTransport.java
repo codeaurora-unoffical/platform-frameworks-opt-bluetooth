@@ -24,14 +24,21 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import javax.obex.ObexTransport;
+import javax.btobex.ObexTransport;
+import javax.btobex.ObexHelper;
 
-class BluetoothMapRfcommTransport implements ObexTransport {
+class BluetoothMapTransport implements ObexTransport {
+    private static final String TAG = "BluetoothMapTransport";
+    public static final int TYPE_RFCOMM = 0;
+    public static final int TYPE_L2CAP = 1;
+
     private final BluetoothSocket mSocket;
+    public final int mType;
 
-    public BluetoothMapRfcommTransport(BluetoothSocket socket) {
+    public BluetoothMapTransport(BluetoothSocket socket, int type) {
         super();
-        mSocket = socket;
+        this.mSocket = socket;
+        this.mType = type;
     }
 
     @Override
@@ -74,4 +81,13 @@ class BluetoothMapRfcommTransport implements ObexTransport {
     public DataOutputStream openDataOutputStream() throws IOException {
         return new DataOutputStream(openOutputStream());
     }
+
+    public boolean isSrmCapable() {
+        return mType == TYPE_L2CAP;
+    }
+
+    public int getMaxPacketSize() {
+        return ObexHelper.MAX_PACKET_SIZE_INT;
+    }
+
 }

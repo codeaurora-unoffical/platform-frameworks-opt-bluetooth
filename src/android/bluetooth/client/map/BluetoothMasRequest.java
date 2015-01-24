@@ -20,13 +20,16 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
-import javax.obex.ClientOperation;
-import javax.obex.ClientSession;
-import javax.obex.HeaderSet;
-import javax.obex.Operation;
-import javax.obex.ResponseCodes;
+import javax.btobex.ClientOperation;
+import javax.btobex.ClientSession;
+import javax.btobex.HeaderSet;
+import javax.btobex.Operation;
+import javax.btobex.ResponseCodes;
+import android.util.Log;
+
 
 abstract class BluetoothMasRequest {
+    private final static String TAG = "BluetoothMasRequest";
 
     protected static final byte OAP_TAGID_MAX_LIST_COUNT = 0x01;
     protected static final byte OAP_TAGID_START_OFFSET = 0x02;
@@ -120,7 +123,7 @@ abstract class BluetoothMasRequest {
             mResponseCode = op.getResponseCode();
         } catch (IOException e) {
             mResponseCode = ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
-
+            Log.w(TAG, "executeGet: ", e);
             throw e;
         }
     }
@@ -143,12 +146,13 @@ abstract class BluetoothMasRequest {
             mResponseCode = op.getResponseCode();
         } catch (IOException e) {
             mResponseCode = ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
-
+            Log.w(TAG, "executePut: ", e);
             throw e;
         }
     }
 
     final public boolean isSuccess() {
+        Log.w(TAG, "isSuccess: " + mResponseCode);
         return (mResponseCode == ResponseCodes.OBEX_HTTP_OK);
     }
 

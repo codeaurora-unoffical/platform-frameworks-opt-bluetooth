@@ -29,7 +29,7 @@ import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.lang.ref.WeakReference;
 
-import javax.obex.ServerSession;
+import javax.btobex.ServerSession;
 
 class BluetoothMnsService {
 
@@ -45,9 +45,13 @@ class BluetoothMnsService {
 
     /* these are shared across instances */
     static private SparseArray<Handler> mCallbacks = null;
-    static private SocketAcceptThread mAcceptThread = null;
+    static private RfcommSocketAcceptThread mRfcommAcceptThread = null;
+    static private L2capSocketAcceptThread mL2capAcceptThread = null;
     static private Handler mSessionHandler = null;
-    static private BluetoothServerSocket mServerSocket = null;
+    static private BluetoothServerSocket mRfcommServerSocket = null;
+    static private BluetoothServerSocket mL2capServerSocket = null;
+    static private int mMasTransportType;
+    static private ServerSession mMnsServerSession = null;
 
     private static class SessionHandler extends Handler {
 
@@ -81,55 +85,109 @@ class BluetoothMnsService {
         }
     }
 
-    private static class SocketAcceptThread extends Thread {
+    private static class RfcommSocketAcceptThread extends Thread {
 
         private boolean mInterrupted = false;
 
         @Override
         public void run() {
 
-            if (mServerSocket != null) {
-                Log.w(TAG, "Socket already created, exiting");
+            if (mRfcommServerSocket != null) {
+                Log.w(TAG, "Rfcomm Socket already created, exiting");
                 return;
             }
 
             try {
                 BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
-                mServerSocket = adapter.listenUsingEncryptedRfcommWithServiceRecord(
+                mRfcommServerSocket = adapter.listenUsingEncryptedRfcommWithServiceRecord(
                         "MAP Message Notification Service", MAP_MNS.getUuid());
             } catch (IOException e) {
                 mInterrupted = true;
-                Log.e(TAG, "I/O exception when trying to create server socket", e);
+                Log.e(TAG, "I/O exception when trying to create rfcomm server socket", e);
             }
 
             while (!mInterrupted) {
                 try {
-                    Log.v(TAG, "waiting to accept connection...");
+                    Log.v(TAG, "waiting to accept connection on Rfcomm socket...");
 
-                    BluetoothSocket sock = mServerSocket.accept();
+                    BluetoothSocket sock = mRfcommServerSocket.accept();
 
                     Log.v(TAG, "new incoming connection from "
-                            + sock.getRemoteDevice().getName());
+                            + sock.getRemoteDevice().getName() + "on rfcomm socket");
 
                     // session will live until closed by remote
                     BluetoothMnsObexServer srv = new BluetoothMnsObexServer(mSessionHandler);
-                    BluetoothMapRfcommTransport transport = new BluetoothMapRfcommTransport(
-                            sock);
-                    new ServerSession(transport, srv, null);
+                    BluetoothMapTransport transport = new BluetoothMapTransport(
+                            sock, BluetoothMapTransport.TYPE_RFCOMM);
+                    mMnsServerSession = new ServerSession(transport, srv, null);
                 } catch (IOException ex) {
-                    Log.v(TAG, "I/O exception when waiting to accept (aborted?)");
+                    Log.v(TAG, "I/O exception when waiting to accept (aborted)");
                     mInterrupted = true;
                 }
             }
 
-            if (mServerSocket != null) {
+            if (mRfcommServerSocket != null) {
                 try {
-                    mServerSocket.close();
+                    mRfcommServerSocket.close();
                 } catch (IOException e) {
                     // do nothing
                 }
 
-                mServerSocket = null;
+                mRfcommServerSocket = null;
+            }
+        }
+    }
+
+        private static class L2capSocketAcceptThread extends Thread {
+
+        private boolean mInterrupted = false;
+
+        @Override
+        public void run() {
+
+            if (mL2capServerSocket != null) {
+                Log.w(TAG, "L2cap Socket already created, exiting");
+                return;
+            }
+
+            try {
+                BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+                mL2capServerSocket = adapter.listenUsingL2capWithServiceRecord(
+                        "MAP Message Notification Service", MAP_MNS.getUuid());
+            } catch (IOException e) {
+                mInterrupted = true;
+                Log.e(TAG, "I/O exception when trying to create l2cap server socket", e);
+            }
+
+            while (!mInterrupted) {
+                try {
+                    Log.v(TAG, "waiting to accept connection on l2cap socket...");
+
+                    BluetoothSocket sock = mL2capServerSocket.accept();
+
+                    Log.v(TAG, "new incoming connection from "
+                            + sock.getRemoteDevice().getName() + "on l2cap socket");
+
+                    // session will live until closed by remote
+                    BluetoothMnsObexServer srv = new BluetoothMnsObexServer(mSessionHandler);
+                    BluetoothMapTransport transport = new BluetoothMapTransport(
+                            sock, BluetoothMapTransport.TYPE_L2CAP);
+                    mMnsServerSession = new ServerSession(transport, srv, null);
+                    mMnsServerSession.mSrmServer.setLocalSrmCapability(transport.isSrmCapable());
+                } catch (IOException ex) {
+                    Log.v(TAG, "I/O exception when waiting to accept (aborted)");
+                    mInterrupted = true;
+                }
+            }
+
+            if (mL2capServerSocket != null) {
+                try {
+                    mL2capServerSocket.close();
+                } catch (IOException e) {
+                    // do nothing
+                }
+
+                mL2capServerSocket = null;
             }
         }
     }
@@ -148,47 +206,98 @@ class BluetoothMnsService {
         }
     }
 
-    public void registerCallback(int instanceId, Handler callback) {
-        Log.v(TAG, "registerCallback()");
+    private void startRfcommSocketListener() {
+        Log.v(TAG, "startRfcommSocketListener: mRfcommAcceptThread: " + mRfcommAcceptThread);
+        if (mRfcommAcceptThread == null) {
+            mRfcommAcceptThread = new RfcommSocketAcceptThread();
+            mRfcommAcceptThread.setName("BluetoothMnsRfcommAcceptThread");
+            mRfcommAcceptThread.start();
+        }
+    }
+
+    private void startL2capSocketListener() {
+        Log.v(TAG, "startL2capSocketListener: mL2capAcceptThread: " + mL2capAcceptThread);
+        if (mL2capAcceptThread == null) {
+            mL2capAcceptThread = new L2capSocketAcceptThread();
+            mL2capAcceptThread.setName("BluetoothMnsL2capAcceptThread");
+            mL2capAcceptThread.start();
+        }
+    }
+
+    public void closeRfcommSocket()
+    {
+        Log.v(TAG, "closeRfcommSocket(): mRfcommServerSocket: " + mRfcommServerSocket
+                            + " mRfcommAcceptThread: " + mRfcommAcceptThread);
+        if (mRfcommServerSocket != null) {
+            try {
+                mRfcommServerSocket.close();
+            } catch (IOException e) {
+            }
+
+            mRfcommServerSocket = null;
+        }
+
+        mRfcommAcceptThread.interrupt();
+
+        try {
+            mRfcommAcceptThread.join(2000);
+        } catch (InterruptedException e) {
+        }
+
+        mRfcommAcceptThread = null;
+    }
+
+    public void closeL2capSocket()
+    {
+        Log.v(TAG, "closeL2capSocket(): mL2capServerSocket: " + mL2capServerSocket
+                            + " mL2capAcceptThread: " + mL2capAcceptThread);
+        if (mL2capServerSocket != null) {
+            try {
+                mL2capServerSocket.close();
+            } catch (IOException e) {
+            }
+
+            mL2capServerSocket = null;
+        }
+
+        mL2capAcceptThread.interrupt();
+
+        try {
+            mL2capAcceptThread.join(2000);
+        } catch (InterruptedException e) {
+        }
+
+        mL2capAcceptThread = null;
+    }
+
+    public void registerCallback(int instanceId, Handler callback, int transportType) {
+        mMasTransportType = transportType;
+        Log.v(TAG, "registerCallback() mMasTransportType: " + mMasTransportType);
 
         synchronized (mCallbacks) {
             mCallbacks.put(instanceId, callback);
-
-            if (mAcceptThread == null) {
-                Log.v(TAG, "registerCallback(): starting MNS server");
-                mAcceptThread = new SocketAcceptThread();
-                mAcceptThread.setName("BluetoothMnsAcceptThread");
-                mAcceptThread.start();
-            }
+            Log.v(TAG, "registerCallback(): starting MNS server");
+            startRfcommSocketListener();
+            startL2capSocketListener();
         }
     }
 
     public void unregisterCallback(int instanceId) {
-        Log.v(TAG, "unregisterCallback()");
+        Log.v(TAG, "unregisterCallback(): mMasTransportType: " + mMasTransportType);
 
         synchronized (mCallbacks) {
             mCallbacks.remove(instanceId);
 
             if (mCallbacks.size() == 0) {
-                Log.v(TAG, "unregisterCallback(): shutting down MNS server");
-
-                if (mServerSocket != null) {
-                    try {
-                        mServerSocket.close();
-                    } catch (IOException e) {
-                    }
-
-                    mServerSocket = null;
+                Log.v(TAG, "unregisterCallback(): shutting down MNS server: mMnsServerSession: "
+                        + mMnsServerSession);
+                if (mMnsServerSession != null) {
+                    mMnsServerSession.close();
+                    mMnsServerSession = null;
                 }
+                closeRfcommSocket();
+                closeL2capSocket();
 
-                mAcceptThread.interrupt();
-
-                try {
-                    mAcceptThread.join(5000);
-                } catch (InterruptedException e) {
-                }
-
-                mAcceptThread = null;
             }
         }
     }
