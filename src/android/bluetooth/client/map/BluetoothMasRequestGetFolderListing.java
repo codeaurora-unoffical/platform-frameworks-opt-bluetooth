@@ -44,7 +44,7 @@ final class BluetoothMasRequestGetFolderListing extends BluetoothMasRequest {
 
         ObexAppParameters oap = new ObexAppParameters();
 
-        if (maxListCount > 0) {
+        if (maxListCount >= 0) {
             oap.add(OAP_TAGID_MAX_LIST_COUNT, (short) maxListCount);
         }
 
