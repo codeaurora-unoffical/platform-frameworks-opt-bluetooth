@@ -291,10 +291,6 @@ class BluetoothMnsService {
             if (mCallbacks.size() == 0) {
                 Log.v(TAG, "unregisterCallback(): shutting down MNS server: mMnsServerSession: "
                         + mMnsServerSession);
-                if (mMnsServerSession != null) {
-                    mMnsServerSession.close();
-                    mMnsServerSession = null;
-                }
                 closeRfcommSocket();
                 closeL2capSocket();
 
