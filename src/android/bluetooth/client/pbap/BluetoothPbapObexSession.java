@@ -65,13 +65,20 @@ final class BluetoothPbapObexSession {
         Log.d(TAG, "stop");
 
         if (mObexClientThread != null) {
-            try {
-                abort();
-                mObexClientThread.interrupt();
-                mObexClientThread.join();
-                mObexClientThread = null;
-            } catch (InterruptedException e) {
-            }
+            abort();
+            Thread t = new Thread(new Runnable() {
+                public void run () {
+                    Log.d(TAG, "Spawning a new thread for stopping obex session");
+                    try {
+                        mObexClientThread.interrupt();
+                        mObexClientThread.join();
+                        mObexClientThread = null;
+                    } catch (InterruptedException e) {
+                    }
+                }
+            });
+            t.start();
+            Log.d(TAG, "Exiting from the stopping thread");
         }
     }
 
