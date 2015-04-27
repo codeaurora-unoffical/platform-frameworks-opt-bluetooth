@@ -312,8 +312,15 @@ class BluetoothMapBmessageParser {
 
         prop = mParser.next(true);
 
-        if (prop != null && prop.equals(END_MSG)) {
-            mBmsg.mMessage = new String(data, 0, messageLen);
+        if (prop != null) {
+            if (prop.equals(END_MSG)) {
+                mBmsg.mMessage = new String(data, 0, messageLen);
+            } else {
+                Log.e(TAG, "Prop Invalid: "+ prop.toString());
+                //TODO: Handle Incorrect LENGTH: IOT Specific issue ?
+                Log.e(TAG, "Possible Invalid LENGTH value");
+                throw expected(END_MSG);
+            }
         } else {
 
             data = null;
@@ -322,6 +329,10 @@ class BluetoothMapBmessageParser {
              * now we check if bMessage can be parsed if LENGTH is handled as
              * number of characters instead of number of bytes
              */
+            if (offset < 0 || offset > remng.length()) {
+                //TODO:Handle Incorrect LENGTH: IOT Specific issue ?
+                throw new ParseException("Invalid LENGTH value", mParser.pos());
+            }
 
             Log.w(TAG, "byte LENGTH seems to be invalid, trying with char length");
 
