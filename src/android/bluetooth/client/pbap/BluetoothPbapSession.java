@@ -129,6 +129,7 @@ class BluetoothPbapSession implements Callback {
                 break;
 
             case BluetoothPbapObexSession.OBEX_SESSION_DISCONNECTED:
+                Log.d(TAG, "OBEX SESSION DISCONNECTED");
                 mParentHandler.obtainMessage(SESSION_DISCONNECTED).sendToTarget();
                 stopRfcomm();
                 break;
@@ -178,7 +179,6 @@ class BluetoothPbapSession implements Callback {
         Log.d(TAG, "Stop");
 
         stopObexSession();
-        stopRfcomm();
     }
 
     public void abort() {
