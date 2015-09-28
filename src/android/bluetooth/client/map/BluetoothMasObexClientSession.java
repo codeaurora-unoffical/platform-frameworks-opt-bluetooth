@@ -159,6 +159,12 @@ class BluetoothMasObexClientSession {
 
             return true;
         }
+
+        private void shutdown() {
+            Log.w(TAG, "shutdown ");
+            mInterrupted = true;
+            interrupt();
+        }
     }
 
     public BluetoothMasObexClientSession(ObexTransport transport, Handler handler) {
@@ -176,7 +182,7 @@ class BluetoothMasObexClientSession {
 
     public void stop() {
         if (mClientThread != null) {
-            mClientThread.interrupt();
+            mClientThread.shutdown();
 
             (new Thread() {
                 @Override
