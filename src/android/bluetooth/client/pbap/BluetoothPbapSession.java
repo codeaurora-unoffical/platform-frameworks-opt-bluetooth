@@ -350,8 +350,8 @@ class BluetoothPbapSession implements Callback {
         private boolean connectL2capSocket() {
             try {
                 /* Use BluetoothSocket to connect */
-                Log.v(TAG,"connectL2capSocket: PSM: " + mPse.getL2capPsm());
-                if (mPse.getL2capPsm() != L2CAP_INVALID_PSM) {
+                if (mPse != null && mPse.getL2capPsm() != L2CAP_INVALID_PSM) {
+                    Log.v(TAG,"connectL2capSocket: PSM: " + mPse.getL2capPsm());
                     mSocket = mDevice.createL2capSocket(mPse.getL2capPsm());
                     mSocket.connect();
                     Log.d(TAG,"l2cap socket connected ");
@@ -369,8 +369,12 @@ class BluetoothPbapSession implements Callback {
         private boolean connectRfcommSocket() {
             try {
                 /* Use BluetoothSocket to connect */
-                Log.v(TAG,"connectRfcommSocket: channel: " + mPse.getRfcommChannelNumber());
-                mSocket = mDevice.createRfcommSocket(mPse.getRfcommChannelNumber());
+                if ( mPse != null) {
+                    Log.v(TAG,"connectRfcommSocket: channel: " + mPse.getRfcommChannelNumber());
+                    mSocket = mDevice.createRfcommSocket(mPse.getRfcommChannelNumber());
+                } else {
+                    mSocket = mDevice.createRfcommSocketToServiceRecord(UUID.fromString(PBAP_UUID));
+                }
                 mSocket.connect();
                 Log.v(TAG,"rfcomm socket connected ");
             } catch (IOException e) {

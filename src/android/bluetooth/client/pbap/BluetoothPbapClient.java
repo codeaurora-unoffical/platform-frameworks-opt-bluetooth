@@ -380,6 +380,7 @@ public class BluetoothPbapClient {
 
     private SessionHandler mSessionHandler;
 
+    private static final int SDP_PBAP11_PCE_VERSION = 0x0101;
     private static final int SDP_PBAP_PCE_VERSION = 0x0102;
     private int mPceSdpHandle = -1;;
     private static BluetoothAdapter mAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -547,7 +548,7 @@ public class BluetoothPbapClient {
 
         mSessionHandler = new SessionHandler(this);
 
-        addSdp();
+        addPbap11Sdp();
 
         mSession = new BluetoothPbapSession(device, mSessionHandler);
     }
@@ -581,6 +582,20 @@ public class BluetoothPbapClient {
         }
         mPceSdpHandle = mAdapter.createPbapPceSdpRecord("Phonebook Access Client Service",
                 SDP_PBAP_PCE_VERSION);
+    }
+
+    /**
+     * Add the PBAP 1.1 SDP record for PBAP Client
+     */
+    public void addPbap11Sdp() {
+        Log.d(TAG, "addpbap11Sdp");
+        if(mPceSdpHandle >= 0) {
+            Log.d(TAG, "Removing PCE SDP record: " + mPceSdpHandle);
+            mAdapter.removeSdpRecord(mPceSdpHandle);
+            mPceSdpHandle = -1;
+        }
+        mPceSdpHandle = mAdapter.createPbapPceSdpRecord("Phonebook Access Client Service",
+                SDP_PBAP11_PCE_VERSION);
     }
 
 

@@ -232,10 +232,10 @@ final class BluetoothPbapObexSession {
 
             HeaderSet hs = new HeaderSet();
             hs.setHeader(HeaderSet.TARGET, PBAP_TARGET);
-            Log.d(TAG,"mPse.getSupportedFeatures() "+mPse.getSupportedFeatures());
             if (mPse != null && mPse.getSupportedFeatures() != java.nio.ByteBuffer.
                          wrap(PBAP_SUPPORTED_FEATURE).getInt() && mTransport.mType ==
                         BluetoothSocket.TYPE_L2CAP) {
+                Log.d(TAG,"mPse.getSupportedFeatures() "+mPse.getSupportedFeatures());
                 ObexAppParameters oap = new ObexAppParameters();
                 oap.add(BluetoothPbapRequest.OAP_TAGID_PBAP_SUPPORTED_FEATURES,
                     PBAP_SUPPORTED_FEATURE);
