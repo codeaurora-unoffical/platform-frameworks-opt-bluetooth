@@ -74,6 +74,8 @@ class BluetoothMapBmessageParser {
 
     static public BluetoothMapBmessage createBmessage(String str) {
         BluetoothMapBmessageParser p = new BluetoothMapBmessageParser();
+        if (str == null || str.equals(""))
+            return null;
 
         try {
             p.parse(str);
@@ -307,14 +309,27 @@ class BluetoothMapBmessageParser {
         String remng = mParser.remaining();
         byte[] data = remng.getBytes();
 
+        int bodyUpto = remng.lastIndexOf("END:MSG");
+        String msgBody = remng.substring(0,bodyUpto);
+
         /* restart parsing from after 'message'<CRLF> */
-        mParser = new BmsgTokenizer(new String(data, offset, data.length - offset), restartPos);
+        try {
+            mParser = new BmsgTokenizer(new String(data, offset, data.length - offset), restartPos);
+        } catch(StringIndexOutOfBoundsException e) {
+            /* if MAP Server sends incorrect message body length fetch message
+             * till last occurance of END:MSG tag */
+            Log.d(TAG," MAP Server sent wrong message body length. Fetching"
+                        +" message till last occurance of END:MSG tag");
+            messageLen = msgBody.length() - CRLF_LEN;
+            offset = msgBody.length();
+            mParser = new BmsgTokenizer(remng.substring(offset), restartPos);
+        }
 
         prop = mParser.next(true);
 
         if (prop != null) {
             if (prop.equals(END_MSG)) {
-                mBmsg.mMessage = new String(data, 0, messageLen);
+                mBmsg.mMessage = msgBody;
             } else {
                 /* Handle possible exception for incorrect LENGTH value
                  * from MSE while parsing  GET Message response */
