@@ -78,14 +78,19 @@ final class BluetoothPbapObexSession {
         Log.d(TAG, "stop");
 
         if (mObexClientThread != null) {
-            abort();
             Thread t = new Thread(new Runnable() {
                 public void run () {
                     Log.d(TAG, "Spawning a new thread for stopping obex session");
                     try {
+                        Log.d(TAG, " Client session before abort "+ mObexClientThread.mRequest);
+                        if (mObexClientThread.mRequest != null) {
+                            mObexClientThread.mRequest.abort();
+                        }
+                        Log.d(TAG, " Client session aborted");
                         mObexClientThread.interrupt();
                         mObexClientThread.join();
                         mObexClientThread = null;
+                        Log.d(TAG, " Closed Clinet thread");
                     } catch (InterruptedException e) {
                     }
                 }
@@ -205,6 +210,14 @@ final class BluetoothPbapObexSession {
             disconnect();
 
             mSessionHandler.obtainMessage(OBEX_SESSION_DISCONNECTED).sendToTarget();
+        }
+
+        @Override
+        public void interrupt() {
+            // TODO Auto-generated method stub
+            super.interrupt();
+            Log.d(TAG, "Interrupt mRunning :" + mRunning);
+            mRunning = false;
         }
 
         public synchronized boolean schedule(BluetoothPbapRequest request) {
