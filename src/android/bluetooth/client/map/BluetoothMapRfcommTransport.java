@@ -17,6 +17,7 @@
 package android.bluetooth.client.map;
 
 import android.bluetooth.BluetoothSocket;
+import android.os.SystemProperties;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -87,6 +88,7 @@ class BluetoothMapRfcommTransport implements ObexTransport {
 
     @Override
     public boolean isSrmSupported() {
-        return false;
+        boolean srmSupported = SystemProperties.getBoolean("persist.service.bt.mce.srm", false);
+        return srmSupported;
     }
 }
