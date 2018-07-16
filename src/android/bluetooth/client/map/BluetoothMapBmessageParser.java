@@ -303,7 +303,7 @@ class BluetoothMapBmessageParser {
          * empty. We force the getMessage (see BluetoothMasClient) to only call getMessage with
          * UTF-8 as the MCE is not obliged to support native charset.
          */
-        if (!mBmsg.mBbodyCharset.equals("UTF-8")) {
+        if (mBmsg.mBbodyCharset != null && !mBmsg.mBbodyCharset.equals("UTF-8")) {
             Log.e(TAG, "The charset was not set to charset UTF-8: " + mBmsg.mBbodyCharset);
         }
 
@@ -331,7 +331,7 @@ class BluetoothMapBmessageParser {
 
         if (prop != null) {
             if (prop.equals(END_MSG)) {
-                if (mBmsg.mBbodyCharset.equals("UTF-8")) {
+                if (mBmsg.mBbodyCharset != null && mBmsg.mBbodyCharset.equals("UTF-8")) {
                     mBmsg.mMessage = new String(data, 0, messageLen, StandardCharsets.UTF_8);
                 } else {
                     mBmsg.mMessage = null;
@@ -367,7 +367,7 @@ class BluetoothMapBmessageParser {
                 throw expected(END_MSG);
             }
 
-            if (mBmsg.mBbodyCharset.equals("UTF-8")) {
+            if (mBmsg.mBbodyCharset != null && mBmsg.mBbodyCharset.equals("UTF-8")) {
                 mBmsg.mMessage = remng.substring(0, messageLen);
             } else {
                 mBmsg.mMessage = null;
