@@ -19,6 +19,7 @@ package android.bluetooth.client.map;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothMasInstance;
 import android.bluetooth.BluetoothSocket;
+import android.bluetooth.BluetoothUuid;
 import android.bluetooth.SdpMasRecord;
 import android.os.Handler;
 import android.os.Message;
@@ -44,6 +45,8 @@ public class BluetoothMasClient {
     private static final int SOCKET_CONNECTED = 10;
 
     private static final int SOCKET_ERROR = 11;
+
+    private static final int L2CAP_INVALID_PSM = -1;
 
     /**
      * Callback message sent when connection state changes
@@ -468,9 +471,21 @@ public class BluetoothMasClient {
         @Override
         public void run() {
             try {
-                socket = mDevice.createRfcommSocket(mMas.getRfcommCannelNumber());
-                socket.connect();
+                /* Use BluetoothSocket to connect */
+                if (mMas == null) {
+                    // BackWardCompatability: Fall back to create RFCOMM through UUID.
+                    Log.d(TAG, "connectSocket: UUID: " + BluetoothUuid.MAS.getUuid());
+                    socket = mDevice.createRfcommSocketToServiceRecord(
+                            BluetoothUuid.MAS.getUuid());
+                } else if (mMas.getL2capPsm() != L2CAP_INVALID_PSM) {
+                    Log.d(TAG, "connectSocket: PSM: " + mMas.getL2capPsm());
+                    socket = mDevice.createL2capSocket(mMas.getL2capPsm());
+                } else {
+                    Log.d(TAG, "connectSocket: channel: " + mMas.getRfcommCannelNumber());
+                    socket = mDevice.createRfcommSocket(mMas.getRfcommCannelNumber());
+                }
 
+                socket.connect();
                 BluetoothMapRfcommTransport transport;
                 transport = new BluetoothMapRfcommTransport(socket);
 
