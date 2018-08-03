@@ -19,6 +19,7 @@ package android.bluetooth.client.map;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
+import android.bluetooth.BluetoothDevice;
 import android.os.Handler;
 import android.os.Message;
 import android.os.ParcelUuid;
@@ -38,16 +39,20 @@ class BluetoothMnsService {
     private static final ParcelUuid MAP_MNS =
             ParcelUuid.fromString("00001133-0000-1000-8000-00805F9B34FB");
 
-    static final int MSG_EVENT = 1;
+    public static final int MNS_RFCOMM_CHANNEL = 22;
+    public static final int MNS_L2CAP_PSM = 0x1027;
 
+    static final int MSG_EVENT = 1;
     /* for BluetoothMasClient */
     static final int EVENT_REPORT = 1001;
 
     /* these are shared across instances */
-    static private SparseArray<Handler> mCallbacks = null;
-    static private SocketAcceptThread mAcceptThread = null;
+    static private SocketAcceptor mAcceptThread = null;
     static private Handler mSessionHandler = null;
     static private BluetoothServerSocket mServerSocket = null;
+    static private BluetoothMnsObexServerSockets mServerSockets = null;
+    static private SparseArray<Handler> mCallbacks = null;
+    static private volatile boolean mShutdown = false;         // Used to interrupt socket accept thread
 
     private static class SessionHandler extends Handler {
 
@@ -81,55 +86,36 @@ class BluetoothMnsService {
         }
     }
 
-    private static class SocketAcceptThread extends Thread {
+    private class SocketAcceptor implements IObexConnectionHandler {
 
         private boolean mInterrupted = false;
 
+        /**
+         * Called when an unrecoverable error occurred in an accept thread.
+         * Close down the server socket, and restart.
+         * TODO: Change to message, to call start in correct context.
+         */
         @Override
-        public void run() {
-
-            if (mServerSocket != null) {
-                Log.w(TAG, "Socket already created, exiting");
-                return;
+        public synchronized void onAcceptFailed() {
+            Log.e(TAG, "OnAcceptFailed");
+            mServerSockets = null; // Will cause a new to be created when calling start.
+            if (mShutdown) {
+                Log.e(TAG, "Failed to accept incomming connection - " + "shutdown");
             }
+        }
 
+        @Override
+        public synchronized boolean onConnect(BluetoothDevice device, BluetoothSocket socket) {
+            Log.d(TAG, "onConnect" + device + " SOCKET: " + socket);
+            /* Signal to the service that we have received an incoming connection.*/
+            BluetoothMnsObexServer srv = new BluetoothMnsObexServer(mSessionHandler);
+            BluetoothMapRfcommTransport transport = new BluetoothMapRfcommTransport(socket);
             try {
-                BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
-                mServerSocket = adapter.listenUsingEncryptedRfcommWithServiceRecord(
-                        "MAP Message Notification Service", MAP_MNS.getUuid());
+                new ServerSession(transport, srv, null);
+                return true;
             } catch (IOException e) {
-                mInterrupted = true;
-                Log.e(TAG, "I/O exception when trying to create server socket", e);
-            }
-
-            while (!mInterrupted) {
-                try {
-                    Log.v(TAG, "waiting to accept connection...");
-
-                    BluetoothSocket sock = mServerSocket.accept();
-
-                    Log.v(TAG, "new incoming connection from "
-                            + sock.getRemoteDevice().getName());
-
-                    // session will live until closed by remote
-                    BluetoothMnsObexServer srv = new BluetoothMnsObexServer(mSessionHandler);
-                    BluetoothMapRfcommTransport transport = new BluetoothMapRfcommTransport(
-                            sock);
-                    new ServerSession(transport, srv, null);
-                } catch (IOException ex) {
-                    Log.v(TAG, "I/O exception when waiting to accept (aborted?)");
-                    mInterrupted = true;
-                }
-            }
-
-            if (mServerSocket != null) {
-                try {
-                    mServerSocket.close();
-                } catch (IOException e) {
-                    // do nothing
-                }
-
-                mServerSocket = null;
+                Log.e(TAG, e.toString());
+                return false;
             }
         }
     }
@@ -156,9 +142,10 @@ class BluetoothMnsService {
 
             if (mAcceptThread == null) {
                 Log.v(TAG, "registerCallback(): starting MNS server");
-                mAcceptThread = new SocketAcceptThread();
-                mAcceptThread.setName("BluetoothMnsAcceptThread");
-                mAcceptThread.start();
+                mAcceptThread = new SocketAcceptor();
+                Log.v(TAG, "Listen on rfcomm channel " + MNS_RFCOMM_CHANNEL + " l2cap psm " + MNS_L2CAP_PSM);
+                mServerSockets = BluetoothMnsObexServerSockets.createWithFixedChannels(mAcceptThread,
+                        MNS_RFCOMM_CHANNEL, MNS_L2CAP_PSM);
             }
         }
     }
@@ -172,23 +159,10 @@ class BluetoothMnsService {
             if (mCallbacks.size() == 0) {
                 Log.v(TAG, "unregisterCallback(): shutting down MNS server");
 
-                if (mServerSocket != null) {
-                    try {
-                        mServerSocket.close();
-                    } catch (IOException e) {
-                    }
-
-                    mServerSocket = null;
+                if (mServerSockets != null) {
+                    mServerSockets.shutdown(false);
+                    mServerSockets = null;
                 }
-
-                mAcceptThread.interrupt();
-
-                try {
-                    mAcceptThread.join(5000);
-                } catch (InterruptedException e) {
-                }
-
-                mAcceptThread = null;
             }
         }
     }
