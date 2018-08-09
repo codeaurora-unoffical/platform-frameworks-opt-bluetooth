@@ -163,6 +163,7 @@ class BluetoothMnsService {
                     mServerSockets.shutdown(false);
                     mServerSockets = null;
                 }
+                mAcceptThread = null;
             }
         }
     }

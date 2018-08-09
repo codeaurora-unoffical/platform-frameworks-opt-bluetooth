@@ -304,6 +304,7 @@ public class BluetoothMnsObexServerSockets {
             mRfcommThread = null;
             mL2capThread = null;
         }
+        mConAccepted = false;
     }
 
     /**

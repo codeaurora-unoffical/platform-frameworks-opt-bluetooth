@@ -355,6 +355,10 @@ public class BluetoothMasClient {
                     client.mNotificationEnabled = false;
                     client.mObexSession = null;
                     client.sendToClient(EVENT_CONNECT, false);
+                    if (client.mMnsService != null) {
+                        Log.v(TAG, "unregisterCallback for instance id " + client.mMas.getMasInstanceId());
+                        client.mMnsService.unregisterCallback(client.mMas.getMasInstanceId());
+                    }
                     break;
 
                 case BluetoothMasObexClientSession.MSG_REQUEST_COMPLETED:
