@@ -43,7 +43,7 @@ public class BluetoothMapEventReport {
         SENDING_SUCCESS("SendingSuccess"), DELIVERY_FAILURE("DeliveryFailure"),
         SENDING_FAILURE("SendingFailure"), MEMORY_FULL("MemoryFull"),
         MEMORY_AVAILABLE("MemoryAvailable"), MESSAGE_DELETED("MessageDeleted"),
-        MESSAGE_SHIFT("MessageShift");
+        MESSAGE_SHIFT("MessageShift"), READ_STATUS_CHANGED("ReadStatusChanged");
 
         private final String mSpecName;
 
@@ -64,6 +64,14 @@ public class BluetoothMapEventReport {
     private final String mFolder;
 
     private final String mOldFolder;
+
+    private final String mDatetime;
+
+    private final String mSubject;
+
+    private final String mSenderName;
+
+    private final String mPriority;
 
     private final BluetoothMapBmessage.Type mMsgType;
 
@@ -87,6 +95,14 @@ public class BluetoothMapEventReport {
         mFolder = attrs.get("folder");
 
         mOldFolder = attrs.get("old_folder");
+
+        mDatetime = attrs.get("datetime");
+
+        mSubject = attrs.get("subject");
+
+        mSenderName = attrs.get("sender_name");
+
+        mPriority = attrs.get("priority");
 
         if (mType != Type.MEMORY_FULL && mType != Type.MEMORY_AVAILABLE) {
             String s = attrs.get("msg_type");
@@ -162,6 +178,38 @@ public class BluetoothMapEventReport {
      */
     public BluetoothMapBmessage.Type getMsgType() {
         return mMsgType;
+    }
+
+    /**
+     * @return value corresponding to <code>datetime</code> parameter in MAP
+     *         specification
+     */
+    public String getDatetime() {
+        return mDatetime;
+    }
+
+    /**
+     * @return value corresponding to <code>datetime</code> parameter in MAP
+     *         specification
+     */
+    public String getSubject() {
+        return mSubject;
+    }
+
+    /**
+     * @return value corresponding to <code>sender_name</code> parameter in MAP
+     *         specification
+     */
+    public String getSenderName() {
+        return mSenderName;
+    }
+
+    /**
+     * @return value corresponding to <code>priority</code> parameter in MAP
+     *         specification
+     */
+    public String getPriority() {
+        return mPriority;
     }
 
     @Override
