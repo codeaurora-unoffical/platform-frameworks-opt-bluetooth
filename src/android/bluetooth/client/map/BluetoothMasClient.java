@@ -165,6 +165,15 @@ public class BluetoothMasClient {
     public static final int EVENT_GET_MESSAGES_LISTING_SIZE = 12;
 
     /**
+     * Callback message sent when abort response is received
+     * <code>arg1</code> is set to {@link #STATUS_OK} when abort successfully
+     * and {@link #STATUS_FAILED} when abort failed
+     *
+     * @see #abort()
+     */
+    public static final int EVENT_ABORT = 13;
+
+    /**
      * Status for callback message when request is successful
      */
     public static final int STATUS_OK = 0;
@@ -359,6 +368,12 @@ public class BluetoothMasClient {
                         Log.v(TAG, "unregisterCallback for instance id " + client.mMas.getMasInstanceId());
                         client.mMnsService.unregisterCallback(client.mMas.getMasInstanceId());
                     }
+                    break;
+
+                case BluetoothMasObexClientSession.MSG_OBEX_ABORTED:
+                    boolean success = (msg.arg1 == 0) ? true : false;
+                    Log.v(TAG, "MSG_OBEX_ABORTED, success " + success);
+                    client.sendToClient(EVENT_ABORT, success);
                     break;
 
                 case BluetoothMasObexClientSession.MSG_REQUEST_COMPLETED:
@@ -1121,5 +1136,19 @@ public class BluetoothMasClient {
 
         BluetoothMasRequest request = new BluetoothMasRequestUpdateInbox();
         return mObexSession.makeRequest(request);
+    }
+
+    /**
+     * Abort the current obex operation
+     * <p>
+     * Upon completion callback handler will receive {@link #EVENT_ABORT}
+     *
+     */
+    public void abort() {
+        if (mObexSession == null) {
+            return;
+        }
+
+        mObexSession.abort();
     }
 }

@@ -28,6 +28,7 @@ import java.lang.ref.WeakReference;
 
 import javax.obex.ClientSession;
 import javax.obex.HeaderSet;
+import javax.obex.ObexHelper;
 import javax.obex.ObexTransport;
 import javax.obex.ResponseCodes;
 
@@ -44,6 +45,7 @@ class BluetoothMasObexClientSession {
     static final int MSG_OBEX_CONNECTED = 100;
     static final int MSG_OBEX_DISCONNECTED = 101;
     static final int MSG_REQUEST_COMPLETED = 102;
+    static final int MSG_OBEX_ABORTED = 103;
 
     private static final int CONNECT = 0;
     private static final int DISCONNECT = 1;
@@ -131,6 +133,29 @@ class BluetoothMasObexClientSession {
         disconnect();
     }
 
+    public void abort() {
+        int success;
+        HeaderSet returnHeaderSet = new HeaderSet();
+        try {
+            mSession.sendRequest(ObexHelper.OBEX_OPCODE_ABORT, null, returnHeaderSet, null, false);
+            /*
+            * Read the response from the OBEX server.
+            * Byte 0: Response Code (If successful then OBEX_HTTP_OK)
+            * Byte 1&2: Packet Length
+            */
+            if (returnHeaderSet.responseCode == ResponseCodes.OBEX_HTTP_OK) {
+                if (DBG) Log.d(TAG, "Abort success");
+                success = 1;
+            } else {
+                Log.e(TAG, "Abort failed");
+                success = 0;
+            }
+        } catch (IOException e) {
+            success = 0;
+        }
+        mSessionHandler.obtainMessage(MSG_OBEX_ABORTED, success, 0).sendToTarget();
+    }
+
     private void connect() {
         try {
             mSession = new ClientSession(mTransport);
@@ -167,6 +192,7 @@ class BluetoothMasObexClientSession {
         mConnected = false;
         mSessionHandler.obtainMessage(MSG_OBEX_DISCONNECTED).sendToTarget();
     }
+
 
     private void executeRequest(BluetoothMasRequest request) {
         try {
