@@ -296,11 +296,11 @@ public class BluetoothMasClient {
     /** device associated with client */
     private final BluetoothDevice mDevice;
 
-    /** MAS instance associated with client */
-    private final SdpMasRecord mMas;
-
     /** callback handler to application */
     private final Handler mCallback;
+
+    /** MAS instance associated with client */
+    private SdpMasRecord mMas;
 
     private ConnectionState mConnectionState = ConnectionState.DISCONNECTED;
 
@@ -638,6 +638,13 @@ public class BluetoothMasClient {
      */
     public SdpMasRecord getInstanceData() {
         return mMas;
+    }
+
+    /**
+     * Update MAS Sdp record associated with client
+     */
+    public void setInstanceData(SdpMasRecord mas) {
+        mMas = mas;
     }
 
     /**
